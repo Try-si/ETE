@@ -1,6 +1,9 @@
 package ETEHelper
 
-import "os"
+import (
+	"encoding/json"
+	"os"
+)
 
 func GetAllFilesInDir(path string) []string {
 	// TODO: implement
@@ -13,4 +16,18 @@ func GetAllFilesInDir(path string) []string {
 		result = append(result, file.Name())
 	}
 	return result
+}
+
+func SaveFile[T any](path string, data T) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(path, jsonData, 0o644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
