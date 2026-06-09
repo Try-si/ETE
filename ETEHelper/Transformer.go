@@ -18,6 +18,11 @@ func StringToStruct[T any](jsonString string) T {
 	return result
 }
 
+func StructToJson[T any](data T) string {
+	jsonData, _ := json.Marshal(data)
+	return string(jsonData)
+}
+
 // img
 
 func SliceImageByGrid(img image.Image, cellInPx int) []image.Image {
