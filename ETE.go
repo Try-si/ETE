@@ -15,17 +15,18 @@ func Init(updateFunc func(float32) error, config string) {
 		UpdateFunc: updateFunc,
 	}
 
-	if config[len(config)-5:] != ".json" {
+	if len(config) >= 5 && config[len(config)-5:] != ".json" {
 		Game.Config = ETEHelper.StringToStruct[ETECore.Config](config)
 	} else {
 		Game.Config = ETEHelper.JsonToStruct[ETECore.Config](config)
 	}
 
-	if Game.Config.MapsPath[len(Game.Config.MapsPath)-5:] != ".json" {
+	if len(Game.Config.MapsPath) >= 5 && Game.Config.MapsPath[len(Game.Config.MapsPath)-5:] != ".json" {
 		Game.MapConfig = ETEHelper.StringToStruct[ETECore.MapConfig](Game.Config.MapsPath)
 	} else {
 		Game.MapConfig = ETEHelper.JsonToStruct[ETECore.MapConfig](Game.Config.MapsPath)
 	}
+	Game.MapConfig.G = Game
 
 	Game.InitMap()
 	Game.InitTile()

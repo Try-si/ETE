@@ -1,9 +1,11 @@
 package ETECore
 
 import (
+	"strings"
+
 	"github.com/Try-si/ETE/ETEHelper"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/lafriks/go-tiled"
+	tiled "github.com/lafriks/go-tiled"
 )
 
 func (g *Game) InitMap() {
@@ -14,12 +16,14 @@ func (g *Game) InitMap() {
 }
 
 func (mc *MapConfig) LoadMap(mapName string) *Map {
-	tiledMap, err := tiled.LoadFile(mc.TiledMap + "/" + mapName + ".tmx")
+	dir := strings.Join(strings.Split(mc.G.GetGame().Config.MapsPath, "/")[:len(strings.Split(mc.G.GetGame().Config.MapsPath, "/"))-1], "/")
+
+	tiledMap, err := tiled.LoadFile(dir + "/" + mc.TiledMap + "/" + mapName + ".tmx")
 	if err != nil {
 		panic(err)
 	}
 
-	jsonMaps := ETEHelper.JsonToStruct[JsonMap](mc.JsonMap + "/" + mapName + ".json")
+	jsonMaps := ETEHelper.JsonToStruct[JsonMap](dir + "/" + mc.JsonMap + "/" + mapName + ".json")
 
 	tilesets := []*ebiten.Image{}
 
@@ -96,12 +100,13 @@ func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
 		for pos, tile := range tiles {
 			tile.PushFrame()
 			img, isAnimated := tile.GetSprite()
-			cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].CellSize
 			if isAnimated {
 				b := tile.Game.GetGame().Animations[tile.Game.GetGame().Tiles[string(tile.Id)].Animation].Frames[tile.Frame].Box
+				cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].CellSize
 				lay[la][[9]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0}] = img
 			} else {
 				b := tile.Game.GetGame().Tiles[string(tile.Id)].Box
+				cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].CellSize
 				lay[la][[9]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0}] = img
 			}
 		}

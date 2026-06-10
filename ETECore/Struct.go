@@ -18,6 +18,10 @@ type Game struct {
 	UpdateFunc func(float32) error
 }
 
+func (g *Game) GetGame() *Game {
+	return g
+}
+
 type Config struct {
 	ScreenWidth  int    `json:"ScreenWidth"`  // largeur de l'écran
 	ScreenHeight int    `json:"ScreenHeight"` // hauteur de l'écran
@@ -39,6 +43,7 @@ type MapConfig struct {
 	Tiles           string   `json:"Tiles"`
 	Parrallax       bool     `json:"Parrallax"`
 	ParrallaxFactor float32  `json:"ParrallaxFactor"`
+	G               IForGame
 }
 
 type Map struct {

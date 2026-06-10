@@ -4,7 +4,7 @@ go 1.25.2
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.9.9
-	github.com/lafriks/go-tiled v0.14.0
+	github.com/lafriks/go-tiled v0.8.0
 )
 
 require (
