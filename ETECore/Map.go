@@ -1,11 +1,12 @@
 package ETECore
 
 import (
+	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/Try-si/ETE/ETEHelper"
 	"github.com/hajimehoshi/ebiten/v2"
-	tiled "github.com/lafriks/go-tiled"
 )
 
 func (g *Game) InitMap() {
@@ -18,24 +19,51 @@ func (g *Game) InitMap() {
 func (mc *MapConfig) LoadMap(mapName string) *Map {
 	dir := strings.Join(strings.Split(mc.G.GetGame().Config.MapsPath, "/")[:len(strings.Split(mc.G.GetGame().Config.MapsPath, "/"))-1], "/")
 
-	tiledMap, err := tiled.LoadFile(dir + "/" + mc.TiledMap + "/" + mapName + ".tmx")
+	tmxPath := dir + "/" + mc.TiledMap + "/" + mapName + ".tmx"
+
+	// 1. Charger le TMX avec VOTRE code
+	tiledMap, err := ETEHelper.LoadTMX(tmxPath)
 	if err != nil {
-		panic(err)
+		panic(err) // Ou gestion d'erreur propre
+	}
+
+	// 2. Charger les Tilesets référencés
+	tilesetsImages := []*ebiten.Image{}
+
+	// On itère sur les références de tilesets dans le TMX
+	for _, tsRef := range tiledMap.Tilesets {
+		// Construire le chemin du .tsx
+		// Attention : le chemin dans 'Source' est relatif au .tmx
+		tsxAbsPath := filepath.Join(filepath.Dir(tmxPath), tsRef.Source)
+
+		tsxData, err := ETEHelper.LoadTSX(tsxAbsPath)
+		if err != nil {
+			panic(fmt.Sprintf("Erreur tileset %s: %v", tsRef.Source, err))
+		}
+
+		// Charger l'image et la découper (votre logique existante)
+		imgPath := filepath.Join(filepath.Dir(tsxAbsPath), tsxData.Image.Source)
+		fullImg := ETEHelper.LoadImage(imgPath)
+
+		// Découpage
+		for _, tile := range ETEHelper.SliceImageByGrid(fullImg, (tsxData.TileWidth+tsxData.TileHeight)/2) {
+			tilesetsImages = append(tilesetsImages, ebiten.NewImageFromImage(tile))
+		}
+
+		// NOTE: Ici, vous devez faire attention au FirstGID.
+		// Si vous avez plusieurs tilesets, l'ID 5 du tileset A n'est pas l'index 5 de votre slice.
+		// Il faut une logique de mapping : GID -> (TilesetIndex, LocalIndex)
+		// Exemple : if gid >= tsRef.FirstGID && gid < tsRef.FirstGID + tsxData.TileCount ...
 	}
 
 	jsonMaps := ETEHelper.JsonToStruct[JsonMap](dir + "/" + mc.JsonMap + "/" + mapName + ".json")
 
-	tilesets := []*ebiten.Image{}
-
-	for _, tileset := range tiledMap.Tilesets {
-		for _, tile := range ETEHelper.SliceImageByGrid(ETEHelper.LoadImage(tileset.Image.Source), (tileset.TileWidth+tileset.TileHeight)/2) {
-			tilesets = append(tilesets, ebiten.NewImageFromImage(tile))
-		}
-	}
-
 	resultat := Map{
 		Map: MapData{
-			Tileset: tilesets,
+			Tileset: tilesetsImages,
+			// Vous devrez probablement stocker les données brutes des calques ici
+			// pour pouvoir les dessiner en tenant compte des chunks négatifs.
+			// Layers: tiledMap.Layers,
 		},
 		CellSize: jsonMaps.CellSize,
 		Unité:    jsonMaps.Unite,

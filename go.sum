@@ -12,10 +12,6 @@ github.com/hajimehoshi/ebiten/v2 v2.9.9 h1:JdDag6Ndj12iD4lxQGG8kbsrh7ssj4Sbzth6r
 github.com/hajimehoshi/ebiten/v2 v2.9.9/go.mod h1:DAt4tnkYYpCvu3x9i1X/nK/vOruNXIlYq/tBXxnhrXM=
 github.com/jezek/xgb v1.1.1 h1:bE/r8ZZtSv7l9gk6nU0mYx51aXrvnyb44892TwSaqS4=
 github.com/jezek/xgb v1.1.1/go.mod h1:nrhwO0FX/enq75I7Y7G8iN1ubpSGZEiA3v9e9GyRFlk=
-github.com/lafriks/go-tiled v0.8.0 h1:D/VWswpEUE8xKCVRwIuvjxe1L74qVFrL91xqXA3Z5cI=
-github.com/lafriks/go-tiled v0.8.0/go.mod h1:9utuV90mzpkhBaDYcXhIl9lXH4a9Z0rS7qhgsC1pje0=
-github.com/lafriks/go-tiled v0.14.0 h1:/5HZEOJB4EWic5TAZwf1XMutd7/ruSZs8lrLYazYsj8=
-github.com/lafriks/go-tiled v0.14.0/go.mod h1:qn+8oVyu7La0o3RrUrc2/f52tryDDjJjyWE91qHPFEw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
