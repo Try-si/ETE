@@ -2,6 +2,7 @@ package ETEHelper
 
 import (
 	"image"
+	_ "image/png"
 	"os"
 )
 

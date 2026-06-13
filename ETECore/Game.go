@@ -12,8 +12,18 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	spriteCount := 0
+	firstSprite := true
 	for _, L := range g.Maps[g.Config.Map].GetSpriteByOrderYZX() {
 		for Box, img := range L { // Box = [witdh/radius, height, xOffset, yOffset, xPos, yPos, xSize, ySize, rotation]
+			if img == nil {
+				continue
+			}
+			spriteCount++
+			if firstSprite {
+				println("First sprite position: X=", Box[4], "Y=", Box[5], "Cam offset:", g.Maps[g.Config.Map].Cam.Offset[0], g.Maps[g.Config.Map].Cam.Offset[1])
+				firstSprite = false
+			}
 			if g.Debug { // si le mode debug est activé
 				posX := (Box[4] - g.Maps[g.Config.Map].Cam.Offset[0]) * g.Maps[g.Config.Map].Unité // calculer la position x en pixels
 				posY := (Box[5] + g.Maps[g.Config.Map].Cam.Offset[1]) * g.Maps[g.Config.Map].Unité // calculer la position y en pixels
@@ -70,6 +80,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 			screen.DrawImage(img, opts) // dessiner l'image
 		}
+	}
+	if spriteCount == 0 {
+		println("WARNING: No sprites drawn!")
+	} else {
+		println("Drew", spriteCount, "sprites")
 	}
 }
 

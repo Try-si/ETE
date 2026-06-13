@@ -52,12 +52,10 @@ type Map struct {
 	Unité    float32
 	Cam      Camera
 	Elements map[string]*Element
-	G        IForGame
 }
 
 type MapData struct {
-	Tiles   map[int]map[[2]int]TileElement
-	Tileset []*ebiten.Image
+	Tiles map[int]map[[2]int]*TileElement
 }
 
 type TileElement struct {
@@ -68,7 +66,6 @@ type TileElement struct {
 
 type Tile struct {
 	Animation string   `json:"Animation"`
-	Collision bool     `json:"Collision"`
 	Box       [4]int   `json:"Box"`
 	Tags      []string `json:"Tags"`
 }
@@ -88,11 +85,12 @@ type Element struct {
 }
 
 type JsonMap struct {
-	Map      string              `json:"Map"`
-	CellSize int                 `json:"CellSize"`
-	Unite    float32             `json:"Unite"`
-	Cam      Camera              `json:"Cam"`
-	Elements map[string]*Element `json:"Elements"`
+	Map                 string              `json:"Map"`
+	CellSize            int                 `json:"CellSize"`
+	Unite               float32             `json:"Unite"`
+	PropertiesForHeight string              `json:"PropertiesForHeight"`
+	Cam                 Camera              `json:"Cam"`
+	Elements            map[string]*Element `json:"Elements"`
 }
 
 type Camera struct {

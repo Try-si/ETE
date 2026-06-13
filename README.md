@@ -36,6 +36,7 @@ exemple d'architécture :
  Animations/
     Player.json // pas obligatoire (c'est un exemple)
     Water.json // pas obligatoire (c'est un exemple)
+    Animations.json
     vos animations (.json)
 config.json
 main.go
@@ -73,7 +74,7 @@ config.json :
 
     "SpritePath": "Textures",    // chemin vers les sprites
     "MapsPath": "Maps/Maps.json", // chemin vers les maps
-    "AnimationsPath": "Animations" // chemin vers les animations
+    "AnimationsPath": "Animations/Animations.json" // chemin vers les animations
 }
 ```
 
@@ -109,17 +110,21 @@ Tiles.json :
 {
     "0":{// is a tile id in map of tiled of grass
         "Animation": "nil",// cela peut etre nil
-        "Collision": false,
         "Box": [32,32,0,0],
         "Tags": ["Grass"]
     },
     "1":{// is a tile id in map of tiled of water
         "Animation": "Water_idle",
-        "Collision": true,
         "Box": [32,32,0,0],
         "Tags": ["Water"]
     }
 }
+```
+
+Animations.json :
+
+```json
+["Player", "Water"]
 ```
 
 Exemple map json (overworld.json) :
@@ -129,6 +134,7 @@ Exemple map json (overworld.json) :
     "Map": "Overworld",         // nom de la map
     "CellSize": 1,              // taille de la cellule en unités
     "Unité": 32,                // taille d'une unité en pixels
+    "PropertiesForHeight": "Height", // nom de la propriété dans tiled qui definit la hauteur du layer
     "Cam": {
         "Zoom": 1.0,
         "Offset": [0.0, 0.0]

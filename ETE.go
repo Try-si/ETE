@@ -28,9 +28,9 @@ func Init(updateFunc func(float32) error, config string) {
 	}
 	Game.MapConfig.G = Game
 
+	Game.InitSprites()
 	Game.InitMap()
 	Game.InitTile()
-	Game.InitSprites()
 	Game.InitAnimations()
 	Game.InitElements()
 }

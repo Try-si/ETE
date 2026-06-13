@@ -46,3 +46,14 @@ func SliceImageByGrid(img image.Image, cellInPx int) []image.Image {
 	}
 	return result
 }
+
+// transforme une list en une grille de taille W x H avec la formule i = y * W + x
+func ListToGridYWX[T any](list []T, W, H int, center [2]int) map[[2]int]T {
+	result := make(map[[2]int]T)
+	for y := center[1] - H; y < H-center[1]; y++ {
+		for x := center[0] - W; x < W-center[0]; x++ {
+			result[[2]int{x, y}] = list[y*W+x]
+		}
+	}
+	return result
+}
