@@ -56,10 +56,29 @@ func (t *TileElement) PushFrame() {
 		return
 	}
 
-	if t.Frame > len(t.Game.GetGame().Animations[tileDef.Animation].Frames) {
-		t.Frame = 0
+	if t.Game == nil || t.Game.GetGame() == nil || t.Game.GetGame().Animations == nil {
+		return
 	}
-	t.Frame++
+
+	if t.Frame > 0 {
+		if float32(t.FFrame) >= t.Game.GetGame().Animations[tileDef.Animation].Frames[t.Frame-1].Duration/(t.Game.GetGame().Animations[tileDef.Animation].Speed*0.025) {
+			t.Frame++
+			t.FFrame = 0
+		} else {
+			t.FFrame++
+		}
+	} else {
+		if float32(t.FFrame) >= t.Game.GetGame().Animations[tileDef.Animation].Frames[len(t.Game.GetGame().Animations[tileDef.Animation].Frames)-1].Duration/(t.Game.GetGame().Animations[tileDef.Animation].Speed*0.025) {
+			t.Frame++
+			t.FFrame = 0
+		} else {
+			t.FFrame++
+		}
+	}
+
+	if t.Frame > len(t.Game.GetGame().Animations[tileDef.Animation].Frames) {
+		t.Frame = 1
+	}
 }
 
 func (t *Element) PushFrame() {
@@ -83,10 +102,10 @@ func (t *TileElement) GetSprite() (*ebiten.Image, bool) {
 		return nil, false
 	}
 
-	spriteKey := strconv.Itoa(int(t.Id))
+	spriteKey := strconv.Itoa(int(t.Id - 1))
 	sprite, exists := game.Sprites[spriteKey]
 	if !exists {
-		fmt.Printf("Sprite not found for GID %d\n", t.Id)
+		fmt.Printf("Sprite not found for GID %d\n", t.Id-1)
 		return nil, false
 	}
 	if t.Frame == 0 {
@@ -97,7 +116,7 @@ func (t *TileElement) GetSprite() (*ebiten.Image, bool) {
 	if game.Tiles == nil {
 		return sprite, false
 	}
-	tileDef, exists := game.Tiles[spriteKey]
+	tileDef, exists := game.Tiles[strconv.Itoa(int(t.Id))]
 	if !exists || tileDef == nil {
 		return sprite, false
 	}
@@ -118,7 +137,16 @@ func (t *TileElement) GetSprite() (*ebiten.Image, bool) {
 		return sprite, false
 	}*/
 
-	frameSprite, exists := game.Sprites[frame.Frame]
+	frameName := frame.Frame
+
+	if float32(t.FFrame) < frame.Duration*(anim.Speed*0.025) {
+		if t.Frame-2 >= 0 && t.Frame-2 < len(anim.Frames) {
+			frameName = anim.Frames[len(anim.Frames)-1].Frame
+		}
+		t.FFrame = 0
+	}
+
+	frameSprite, exists := game.Sprites[frameName]
 	if !exists {
 		return sprite, false
 	}

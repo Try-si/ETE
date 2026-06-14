@@ -49,7 +49,7 @@ type MapConfig struct {
 type Map struct {
 	Map      MapData
 	CellSize int
-	Unité    float32
+	Unité    int
 	Cam      Camera
 	Elements map[string]*Element
 }
@@ -59,9 +59,10 @@ type MapData struct {
 }
 
 type TileElement struct {
-	Id    int
-	Frame int
-	Game  IForGame
+	Id     int
+	Frame  int
+	FFrame int
+	Game   IForGame
 }
 
 type Tile struct {
@@ -87,7 +88,7 @@ type Element struct {
 type JsonMap struct {
 	Map                 string              `json:"Map"`
 	CellSize            int                 `json:"CellSize"`
-	Unite               float32             `json:"Unite"`
+	Unite               int                 `json:"Unite"`
 	PropertiesForHeight string              `json:"PropertiesForHeight"`
 	Cam                 Camera              `json:"Cam"`
 	Elements            map[string]*Element `json:"Elements"`
@@ -102,11 +103,11 @@ type Camera struct {
 
 type Animation struct {
 	Frames []Frame `json:"Frames"`
-	Speed  int     `json:"Speed"`
+	Speed  float32 `json:"Speed"`
 }
 
 type Frame struct {
-	Frame    string `json:"Frame"`
-	Duration int    `json:"Duration"`
-	Box      [4]int `json:"Box"`
+	Frame    string  `json:"Frame"`
+	Duration float32 `json:"Duration"`
+	Box      [4]int  `json:"Box"`
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Try-si/ETE/ETEHelper"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/lafriks/go-tiled"
 )
 
 var dir string
@@ -28,23 +27,52 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 	// 1. Charger le JSON
 	jsonMaps := ETEHelper.JsonToStruct[JsonMap](dir + "/" + mc.JsonMap + "/" + mapName + ".json")
 
-	// 2. Charger le TMX avec VOTRE code
-	tiledMap, err := ETEHelper.LoadTMX(tmxPath, jsonMaps.PropertiesForHeight)
+	// 2. Charger le TMX avec le parser personnalisé
+	tiledMap, err := ETEHelper.LoadTMX(tmxPath)
 	if err != nil {
 		panic(err) // Ou gestion d'erreur propre
 	}
 
 	// 3. Charger les Tilesets référencés
-	for _, tileset := range tiledMap.Tilesets {
-		for i, tile := range ETEHelper.SliceImageByGrid(ETEHelper.LoadImage(dir+"/"+mc.TiledMap+tileset.Source), int(jsonMaps.Unite)) {
-			mc.G.GetGame().Sprites[strconv.Itoa(int(tileset.FirstGID)+i)] = ebiten.NewImageFromImage(tile)
+	tilesetsImages := []*ebiten.Image{}
+
+	for _, tsRef := range tiledMap.Tilesets {
+		// Construire le chemin correct pour le TSX
+		// Le fichier TMX est dans Maps/Maps/, le source est ../Tileset/Sol.tsx
+		// Donc le chemin absolu est Maps/Tileset/Sol.tsx
+		tsxAbsPath := dir + "/Tileset/" + tsRef.Source[len("../Tileset/"):]
+		tsxData, err := ETEHelper.LoadTSX(tsxAbsPath)
+		if err != nil {
+			panic(fmt.Sprintf("Erreur tileset %s: %v", tsRef.Source, err))
+		}
+
+		// Construire le chemin correct pour l'image
+		// L'image est ../../Textures/tileset_1.png relatif au TSX
+		// Donc le chemin absolu est Textures/tileset_1.png
+		imgPath := dir + "/../Textures/" + tsxData.Image.Source[len("../../Textures/"):]
+		fullImg := ETEHelper.LoadImage(imgPath)
+
+		for _, tile := range ETEHelper.SliceImageByGrid(fullImg, (tsxData.TileWidth+tsxData.TileHeight)/2) {
+			tilesetsImages = append(tilesetsImages, ebiten.NewImageFromImage(tile))
 		}
 	}
 
-	// 4. Créer la map
+	// 4. Charger les sprites
+	for i, img := range tilesetsImages {
+		mc.G.GetGame().Sprites[strconv.Itoa(i)] = img
+	}
+
+	// 5. Créer la map
+	internalTiles := ETEHelper.ConvertTMXToInternal(tiledMap)
+	fmt.Printf("ConvertTMXToInternal returned %d tiles\n", len(internalTiles))
+	if len(internalTiles) > 0 {
+		fmt.Printf("First tile: LayerID=%d, X=%d, Y=%d, GID=%d\n",
+			internalTiles[0].LayerID, internalTiles[0].X, internalTiles[0].Y, internalTiles[0].GID)
+	}
+
 	resultat := Map{
 		Map: MapData{
-			Tiles: TileToTile(tiledMap.GetTiles(), mc.G), // <--- On injecte les tuiles converties ici
+			Tiles: internalTilesToTiles(internalTiles, mc.G.GetGame()),
 		},
 		CellSize: jsonMaps.CellSize,
 		Unité:    jsonMaps.Unite,
@@ -56,6 +84,8 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 }
 
 func (g *Game) InitTile() {
+	dir = strings.Join(strings.Split(g.Config.MapsPath, "/")[:len(strings.Split(g.Config.MapsPath, "/"))-1], "/")
+
 	g.Tiles = make(map[string]*Tile)
 	for i, j := range ETEHelper.JsonToStruct[map[string]*Tile](dir + "/" + g.MapConfig.Tiles) {
 		tileId, _ := strconv.Atoi(i)
@@ -137,21 +167,23 @@ func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
 	return lay
 }
 
-func TileToTile(tiles map[int]map[[2]int]*tiled.LayerTile, G IForGame) map[int]map[[2]int]*TileElement {
+func internalTilesToTiles(internalTiles []ETEHelper.TileInstance, G IForGame) map[int]map[[2]int]*TileElement {
+	fmt.Printf("internalTilesToTiles called with %d tiles\n", len(internalTiles))
 	result := make(map[int]map[[2]int]*TileElement)
-	for layer, layerTiles := range tiles {
-		result[layer] = make(map[[2]int]*TileElement)
-		for pos, tile := range layerTiles {
-			f := 0
-			if G.GetGame().Tiles[strconv.Itoa(int(tile.ID))].Animation != "nil" {
-				f = 1
-			}
-			result[layer][[2]int{pos[0], pos[1]}] = &TileElement{
-				Id:    int(tile.ID),
-				Frame: f,
-				Game:  G,
-			}
+	for _, t := range internalTiles {
+		if result[t.LayerID] == nil {
+			result[t.LayerID] = make(map[[2]int]*TileElement)
 		}
+		if G.GetGame().Tiles[strconv.Itoa(int(t.GID))] == nil {
+			fmt.Printf("Tile %d not found\n", t.GID)
+			continue
+		}
+		result[t.LayerID][[2]int{t.X, t.Y}] = &TileElement{
+			Id:   int(t.GID),
+			Game: G,
+		}
+		result[t.LayerID][[2]int{t.X, t.Y}].PushFrame()
 	}
+	fmt.Printf("internalTilesToTiles returning %d layers\n", len(result))
 	return result
 }
