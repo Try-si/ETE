@@ -7,3 +7,13 @@ func GetAllKeys[T any](m map[[2]int]T) [][2]int {
 	}
 	return keys
 }
+
+func GetKey[K comparable, V comparable](m map[K]V, value V) K {
+	for k, v := range m {
+		if v == value {
+			return k
+		}
+	}
+	var zero K
+	return zero
+}

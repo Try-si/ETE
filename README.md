@@ -136,7 +136,7 @@ Exemple map json (overworld.json) :
     "Unité": 32,                // taille d'une unité en pixels
     "PropertiesForHeight": "Height", // nom de la propriété dans tiled qui definit la hauteur du layer
     "Cam": {
-        "Zoom": 1.0,
+        "Z": 1.0,
         "Offset": [0.0, 0.0]
     },
 
@@ -146,7 +146,7 @@ Exemple map json (overworld.json) :
             "Name": "Player",  // nom de l'élément dans Elements.json
             "Pos": [0.0, 0.0], // position de l'élément
             "Rotation": 0,     // rotation de l'élément
-            "Layer": 5,        // layer de l'élément
+            "Height": 1,        // hauteur de l'élément
             "MetaData": {
                 "Nom de la variable": "valeur de la variable" // toujours une string
             }

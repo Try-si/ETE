@@ -3,22 +3,23 @@ package ETEHelper
 import (
 	"encoding/xml"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
 
 type TMXMap struct {
-	XMLName    xml.Name   `xml:"map"`
-	Version    string     `xml:"version,attr"`
-	TiledVersion string   `xml:"tiledversion,attr"`
-	Orientation string    `xml:"orientation,attr"`
-	Width      int        `xml:"width,attr"`
-	Height     int        `xml:"height,attr"`
-	TileWidth  int        `xml:"tilewidth,attr"`
-	TileHeight int        `xml:"tileheight,attr"`
-	Infinite   int        `xml:"infinite,attr"`
-	Tilesets   []TMXTileset `xml:"tileset"`
-	Layers     []TMXLayer `xml:"layer"`
+	XMLName      xml.Name     `xml:"map"`
+	Version      string       `xml:"version,attr"`
+	TiledVersion string       `xml:"tiledversion,attr"`
+	Orientation  string       `xml:"orientation,attr"`
+	Width        int          `xml:"width,attr"`
+	Height       int          `xml:"height,attr"`
+	TileWidth    int          `xml:"tilewidth,attr"`
+	TileHeight   int          `xml:"tileheight,attr"`
+	Infinite     int          `xml:"infinite,attr"`
+	Tilesets     []TMXTileset `xml:"tileset"`
+	Layers       []TMXLayer   `xml:"layer"`
 }
 
 type TMXTileset struct {
@@ -40,13 +41,13 @@ type TMXProperties struct {
 }
 
 type TMXProperty struct {
-	Name  string  `xml:"name,attr"`
-	Value string  `xml:"value,attr"`
-	Type  string  `xml:"type,attr"`
+	Name  string `xml:"name,attr"`
+	Value string `xml:"value,attr"`
+	Type  string `xml:"type,attr"`
 }
 
 type TMXData struct {
-	Encoding string      `xml:"encoding,attr"`
+	Encoding string     `xml:"encoding,attr"`
 	Chunks   []TMXChunk `xml:"chunk"`
 }
 
@@ -59,12 +60,12 @@ type TMXChunk struct {
 }
 
 type TSXTileset struct {
-	XMLName   xml.Name `xml:"tileset"`
-	Name      string   `xml:"name,attr"`
-	TileWidth int      `xml:"tilewidth,attr"`
-	TileHeight int     `xml:"tileheight,attr"`
-	TileCount int      `xml:"tilecount,attr"`
-	Image     TSXImage `xml:"image"`
+	XMLName    xml.Name `xml:"tileset"`
+	Name       string   `xml:"name,attr"`
+	TileWidth  int      `xml:"tilewidth,attr"`
+	TileHeight int      `xml:"tileheight,attr"`
+	TileCount  int      `xml:"tilecount,attr"`
+	Image      TSXImage `xml:"image"`
 }
 
 type TSXImage struct {
@@ -74,10 +75,10 @@ type TSXImage struct {
 }
 
 type TileInstance struct {
-	LayerID int
-	X       int
-	Y       int
-	GID     uint32
+	Height int
+	X      int
+	Y      int
+	GID    uint32
 }
 
 func LoadTMX(path string) (*TMXMap, error) {
@@ -100,10 +101,13 @@ func LoadTSX(path string) (*TSXTileset, error) {
 	return &tsx, nil
 }
 
-func ConvertTMXToInternal(tmx *TMXMap) []TileInstance {
+func ConvertTMXToInternal(tmx *TMXMap, propertiesForHeight string) []TileInstance {
 	var tiles []TileInstance
 
 	for _, layer := range tmx.Layers {
+		h, _ := strconv.ParseFloat(layer.Properties.Property[sort.Search(len(layer.Properties.Property), func(i int) bool {
+			return layer.Properties.Property[i].Name == propertiesForHeight
+		})].Value, 32)
 		for _, chunk := range layer.Data.Chunks {
 			lines := strings.Split(strings.TrimSpace(chunk.Data), "\n")
 			for y, line := range lines {
@@ -128,10 +132,10 @@ func ConvertTMXToInternal(tmx *TMXMap) []TileInstance {
 					absX := chunk.X + x
 					absY := chunk.Y + y
 					tiles = append(tiles, TileInstance{
-						LayerID: layer.ID,
-						X:       absX,
-						Y:       absY,
-						GID:     uint32(gid),
+						Height: int(h),
+						X:      absX,
+						Y:      absY,
+						GID:    uint32(gid),
 					})
 				}
 			}

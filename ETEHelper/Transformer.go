@@ -3,7 +3,10 @@ package ETEHelper
 import (
 	"encoding/json"
 	"image"
+	"image/color"
 	"image/draw"
+
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Json
@@ -56,4 +59,30 @@ func ListToGridYWX[T any](list []T, W, H int, center [2]int) map[[2]int]T {
 		}
 	}
 	return result
+}
+
+func ImgMoyenne(img ebiten.Image) color.Color {
+	bounds := img.Bounds()
+	width := bounds.Max.X - bounds.Min.X
+	height := bounds.Max.Y - bounds.Min.Y
+	pixelCount := width * height
+
+	var r, g, b, a uint32
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			cr, cg, cb, ca := img.At(x, y).RGBA()
+			r += cr
+			g += cg
+			b += cb
+			a += ca
+		}
+	}
+
+	// Normaliser de 16 bits (0-65535) vers 8 bits (0-255)
+	return color.RGBA{
+		uint8((r / uint32(pixelCount)) >> 8),
+		uint8((g / uint32(pixelCount)) >> 8),
+		uint8((b / uint32(pixelCount)) >> 8),
+		uint8((a / uint32(pixelCount)) >> 8),
+	}
 }

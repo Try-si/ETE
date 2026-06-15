@@ -63,11 +63,18 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 	}
 
 	// 5. Créer la map
-	internalTiles := ETEHelper.ConvertTMXToInternal(tiledMap)
+	internalTiles := ETEHelper.ConvertTMXToInternal(tiledMap, jsonMaps.PropertiesForHeight)
 	fmt.Printf("ConvertTMXToInternal returned %d tiles\n", len(internalTiles))
 	if len(internalTiles) > 0 {
-		fmt.Printf("First tile: LayerID=%d, X=%d, Y=%d, GID=%d\n",
-			internalTiles[0].LayerID, internalTiles[0].X, internalTiles[0].Y, internalTiles[0].GID)
+		fmt.Printf("First tile: Height=%d, X=%d, Y=%d, GID=%d\n",
+			internalTiles[0].Height, internalTiles[0].X, internalTiles[0].Y, internalTiles[0].GID)
+	}
+
+	// Initialiser les éléments avec G
+	elements := make(map[string]*Element)
+	for k, v := range jsonMaps.Elements {
+		v.G = mc.G
+		elements[k] = v
 	}
 
 	resultat := Map{
@@ -77,7 +84,7 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 		CellSize: jsonMaps.CellSize,
 		Unité:    jsonMaps.Unite,
 		Cam:      jsonMaps.Cam,
-		Elements: jsonMaps.Elements, // Gardez le JSON pour les objets dynamiques (ennemis, joueur, etc.)
+		Elements: elements, // ✅ Maintenant G est initialisé
 	}
 
 	return &resultat
@@ -97,20 +104,24 @@ func (g *Game) InitTile() {
 func (m *Map) GetSpriteByOrderYZX() map[int]map[[9]float32]*ebiten.Image { // [witdh/radius, height, xOffset, yOffset, xPos, yPos, xSize, ySize, rotation]
 	resultat := make(map[int]map[[9]float32]*ebiten.Image)
 
-	for _, e := range m.Elements {
-		resultat[e.Layer] = map[[9]float32]*ebiten.Image{
-			{
-				e.Box[0], e.Box[1],
-				e.Box[2], e.Box[3],
-				float32(e.Pos[0]), float32(e.Pos[1]),
-				float32(e.Size[0]), float32(e.Size[1]),
-				e.Rotation,
-			}: e.GetSprite(),
+	for _, es := range m.GetElementByLayer() {
+		for _, e := range es {
+			resultat[e.Z] = map[[9]float32]*ebiten.Image{
+				{
+					e.Box[0], e.Box[1],
+					e.Box[2], e.Box[3],
+					float32(e.Pos[0]), float32(e.Pos[1]),
+					float32(e.Size[0]), float32(e.Size[1]),
+					e.Rotation,
+				}: e.GetSprite(),
+			}
 		}
 	}
 
 	for k, v := range m.GetTileByLayer() {
-		resultat[k] = make(map[[9]float32]*ebiten.Image)
+		if resultat[k] == nil {
+			resultat[k] = make(map[[9]float32]*ebiten.Image)
+		}
 		for pos, tile := range v {
 			resultat[k][[9]float32{
 				float32(pos[0]), float32(pos[1]),
@@ -128,8 +139,11 @@ func (m *Map) GetSpriteByOrderYZX() map[int]map[[9]float32]*ebiten.Image { // [w
 func (m *Map) GetElementByLayer() map[int][]Element {
 	lay := make(map[int][]Element)
 	for _, v := range m.Elements {
-		v.PushFrame()
-		lay[v.Layer] = append(lay[v.Layer], *v)
+		(v).Animation = v.G.GetGame().Elements[v.Name].Animation
+		(v).Size = v.G.GetGame().Elements[v.Name].Size
+		(v).Box = v.G.GetGame().Elements[v.Name].Box
+		(v).PushFrame()
+		lay[v.Z] = append(lay[v.Z], *v)
 	}
 
 	return lay
@@ -158,7 +172,7 @@ func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
 				} else {
 					b = tile.Game.GetGame().Tiles[strconv.Itoa(int(tile.Id))].Box
 				}
-				cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].CellSize
+				cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].Unité
 				lay[la][[9]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0}] = img
 			}
 		}
@@ -171,18 +185,19 @@ func internalTilesToTiles(internalTiles []ETEHelper.TileInstance, G IForGame) ma
 	fmt.Printf("internalTilesToTiles called with %d tiles\n", len(internalTiles))
 	result := make(map[int]map[[2]int]*TileElement)
 	for _, t := range internalTiles {
-		if result[t.LayerID] == nil {
-			result[t.LayerID] = make(map[[2]int]*TileElement)
+		height := t.Height
+		if result[height] == nil {
+			result[height] = make(map[[2]int]*TileElement)
 		}
 		if G.GetGame().Tiles[strconv.Itoa(int(t.GID))] == nil {
 			fmt.Printf("Tile %d not found\n", t.GID)
 			continue
 		}
-		result[t.LayerID][[2]int{t.X, t.Y}] = &TileElement{
+		result[height][[2]int{t.X, t.Y}] = &TileElement{
 			Id:   int(t.GID),
 			Game: G,
 		}
-		result[t.LayerID][[2]int{t.X, t.Y}].PushFrame()
+		result[height][[2]int{t.X, t.Y}].PushFrame()
 	}
 	fmt.Printf("internalTilesToTiles returning %d layers\n", len(result))
 	return result

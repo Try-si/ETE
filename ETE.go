@@ -38,6 +38,11 @@ func Init(updateFunc func(float32) error, config string) {
 func GameLoop() {
 	ebiten.SetWindowSize(int(Game.Config.ScreenWidth), int(Game.Config.ScreenHeight))
 	ebiten.SetWindowTitle(Game.Config.Title)
+	if Game.Config.Resizeable == false {
+		ebiten.SetWindowResizingMode(ebiten.WindowResizingModeDisabled)
+	} else {
+		ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
+	}
 	if err := ebiten.RunGame(Game); err != nil {
 		panic(err)
 	}

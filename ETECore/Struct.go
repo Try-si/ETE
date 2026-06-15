@@ -25,6 +25,7 @@ func (g *Game) GetGame() *Game {
 type Config struct {
 	ScreenWidth  int    `json:"ScreenWidth"`  // largeur de l'écran
 	ScreenHeight int    `json:"ScreenHeight"` // hauteur de l'écran
+	Resizeable   bool   `json:"Resizeable"`   // si la fenêtre peut être redimensionnée
 	Title        string `json:"Title"`        // titre de la fenêtre
 	Map          string `json:"Map"`          // map actuelle/de base
 
@@ -77,12 +78,12 @@ type Element struct {
 	Box       [4]float32 `json:"Box"`
 	Tags      []string   `json:"Tags"`
 
-	Name         string            `json:"Name"`
-	Pos          [2]float32        `json:"Pos"`
-	Rotation     float32           `json:"Rotation"`
-	Layer, Frame int               `json:"Layer"`
-	MetaData     map[string]string `json:"MetaData"`
-	G            IForGame
+	Name             string            `json:"Name"`
+	Pos              [2]float32        `json:"Pos"`
+	Rotation         float32           `json:"Rotation"`
+	Z, Frame, FFrame int               `json:"Height"`
+	MetaData         map[string]string `json:"MetaData"`
+	G                IForGame
 }
 
 type JsonMap struct {
@@ -95,7 +96,7 @@ type JsonMap struct {
 }
 
 type Camera struct {
-	Zoom   float32    `json:"Zoom"`
+	Z      float32    `json:"Z"`
 	Offset [2]float32 `json:"Offset"`
 }
 
