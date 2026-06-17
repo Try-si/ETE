@@ -3,6 +3,7 @@ package ETECore
 import (
 	"fmt"
 	"image/color"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -96,6 +97,7 @@ func (g *Game) InitTile() {
 	g.Tiles = make(map[string]*Tile)
 	for i, j := range ETEHelper.JsonToStruct[map[string]*Tile](dir + "/" + g.MapConfig.Tiles) {
 		tileId, _ := strconv.Atoi(i)
+		tileId += 1
 		g.Tiles[strconv.Itoa(tileId)] = j
 		println("Loaded tile: " + strconv.Itoa(tileId))
 	}
@@ -103,20 +105,6 @@ func (g *Game) InitTile() {
 
 func (m *Map) GetSpriteByOrderYZX() map[int]map[[9]float32]*ebiten.Image { // [witdh/radius, height, xOffset, yOffset, xPos, yPos, xSize, ySize, rotation]
 	resultat := make(map[int]map[[9]float32]*ebiten.Image)
-
-	for _, es := range m.GetElementByLayer() {
-		for _, e := range es {
-			resultat[e.Z] = map[[9]float32]*ebiten.Image{
-				{
-					e.Box[0], e.Box[1],
-					e.Box[2], e.Box[3],
-					float32(e.Pos[0]), float32(e.Pos[1]),
-					float32(e.Size[0]), float32(e.Size[1]),
-					e.Rotation,
-				}: e.GetSprite(),
-			}
-		}
-	}
 
 	for k, v := range m.GetTileByLayer() {
 		if resultat[k] == nil {
@@ -133,7 +121,35 @@ func (m *Map) GetSpriteByOrderYZX() map[int]map[[9]float32]*ebiten.Image { // [w
 		}
 	}
 
-	return resultat
+	for _, es := range m.GetElementByLayer() {
+		for _, e := range es {
+			if resultat[e.Z] == nil {
+				resultat[e.Z] = make(map[[9]float32]*ebiten.Image)
+			}
+			resultat[e.Z][[9]float32{
+				e.Box[0], e.Box[1],
+				e.Box[2], e.Box[3],
+				e.Pos[0], e.Pos[1],
+				float32(e.Size[0]), float32(e.Size[1]),
+				e.Rotation,
+			}] = e.GetSprite()
+		}
+	}
+
+	// Sort keys
+	keys := make([]int, 0, len(resultat))
+	for k := range resultat {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+
+	// Create new map with sorted keys
+	sortedResult := make(map[int]map[[9]float32]*ebiten.Image)
+	for _, k := range keys {
+		sortedResult[k] = resultat[k]
+	}
+
+	return sortedResult
 }
 
 func (m *Map) GetElementByLayer() map[int][]Element {
@@ -186,11 +202,12 @@ func internalTilesToTiles(internalTiles []ETEHelper.TileInstance, G IForGame) ma
 	result := make(map[int]map[[2]int]*TileElement)
 	for _, t := range internalTiles {
 		height := t.Height
+		gid := int(t.GID)
 		if result[height] == nil {
 			result[height] = make(map[[2]int]*TileElement)
 		}
-		if G.GetGame().Tiles[strconv.Itoa(int(t.GID))] == nil {
-			fmt.Printf("Tile %d not found\n", t.GID)
+		if G.GetGame().Tiles[strconv.Itoa(gid)] == nil {
+			fmt.Printf("Tile %d not found\n", gid)
 			continue
 		}
 		result[height][[2]int{t.X, t.Y}] = &TileElement{

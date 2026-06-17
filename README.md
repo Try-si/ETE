@@ -97,7 +97,7 @@ Elements.json :
 ```json
 {
     "Player": {
-        "Size": [32, 32],
+        "Size": [1, 1],
         "Box": [0, 0, 0, 0], // witdh, height (si il est == a 0 alors c'est un cercle et witdh = rayon), box pos x, box pos y
         "Tags": ["Player"]
     }
@@ -110,12 +110,12 @@ Tiles.json :
 {
     "0":{// is a tile id in map of tiled of grass
         "Animation": "nil",// cela peut etre nil
-        "Box": [32,32,0,0],
+        "Box": [1,1,0,0],
         "Tags": ["Grass"]
     },
     "1":{// is a tile id in map of tiled of water
         "Animation": "Water_idle",
-        "Box": [32,32,0,0],
+        "Box": [1,1,0,0],
         "Tags": ["Water"]
     }
 }
@@ -160,9 +160,9 @@ Exemple animation json (Player.json) :
 {
     "Player_idle": {
         "Frames": [
-            {"Frame": "Player_idle_1.png", "Duration": "rand", "Box": [32, 32, 0, 0]},
-            {"Frame": "Player_idle_2.png", "Duration": "rand", "Box": [32, 32, 0, 0]},
-            {"Frame": "Player_idle_3.png", "Duration": "rand", "Box": [32, 32, 0, 0]}
+            {"Frame": "Player_idle_1.png", "Duration": "rand", "Box": [1, 1, 0, 0]},
+            {"Frame": "Player_idle_2.png", "Duration": "rand", "Box": [1, 1, 0, 0]},
+            {"Frame": "Player_idle_3.png", "Duration": "rand", "Box": [1, 1, 0, 0]}
         ],
         "Speed": 1
     }
@@ -175,9 +175,9 @@ Exemple animation json (Water.json) :
 {
     "Water_idle": {
         "Frames": [
-            {"Frame": "Water_idle_1.png", "Duration": 1, "Box": [32, 32, 0, 0]},
-            {"Frame": "Water_idle_2.png", "Duration": 1, "Box": [32, 32, 0, 0]},
-            {"Frame": "Water_idle_3.png", "Duration": 1, "Box": [32, 32, 0, 0]}
+            {"Frame": "Water_idle_1.png", "Duration": 1, "Box": [1, 1, 0, 0]},
+            {"Frame": "Water_idle_2.png", "Duration": 1, "Box": [1, 1, 0, 0]},
+            {"Frame": "Water_idle_3.png", "Duration": 1, "Box": [1, 1, 0, 0]}
         ],
         "Speed": 1
     }

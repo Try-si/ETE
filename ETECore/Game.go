@@ -1,6 +1,7 @@
 package ETECore
 
 import (
+	"errors"
 	"image/color"
 
 	"github.com/Try-si/ETE/ETEHelper"
@@ -10,87 +11,83 @@ import (
 )
 
 func (g *Game) Update() error {
+	if g.Quite {
+		return errors.New("quit")
+	}
 	return g.UpdateFunc(float32(ebiten.ActualFPS()))
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.Black)
-	for height, L := range g.Maps[g.Config.Map].GetSpriteByOrderYZX() {
+	Map := g.Maps[g.Config.Map]
+	unit := float32(Map.Unité)
 
-		if float32(height) < g.Maps[g.Config.Map].Cam.Z {
+	for height, L := range Map.GetSpriteByOrderYZX() {
+		if float32(height) < Map.Cam.Z {
 			continue
 		}
 
-		for Box, img := range L { // Box = [witdh/radius, height, xOffset, yOffset, xPos, yPos, xSize, ySize, rotation]
-			unité := float64(g.Maps[g.Config.Map].Unité)
+		for Box, img := range L {
+			zoom := Map.Cam.Z
+
+			// === CALCUL DE LA TAILLE ===
+			spriteWidth := float32(Box[0]) * unit * zoom
+			spriteHeight := float32(Box[1]) * unit * zoom
+
+			// === CALCUL DE LA POSITION ===
+			worldX := Box[4] * unit * zoom
+			worldY := Box[5] * unit * zoom
+
+			centerX := float32(g.Config.ScreenWidth) / 2
+			centerY := float32(g.Config.ScreenHeight) / 2
+
+			camOffsetX := Map.Cam.Offset[0] * unit * zoom
+			camOffsetY := Map.Cam.Offset[1] * unit * zoom
+
+			elemOffsetX := Box[2] * unit * zoom
+			elemOffsetY := Box[3] * unit * zoom
+
+			// === INVERSION DES AXES X ET Y ===
+			// Votre système : X+ = gauche, Y+ = haut
+			// Ebiten : X+ = droite, Y+ = bas
+			posX := centerX - (worldX - camOffsetX + elemOffsetX) // X INVERSIÉ
+			posY := centerY - (worldY - camOffsetY + elemOffsetY) // Y INVERSIÉ
+
+			posX -= unit
+			posY -= unit
+
 			if img == nil {
+				if g.Debug {
+					drawRect(screen, posX, posY, spriteWidth, spriteHeight, color.RGBA{255, 0, 0, 255})
+				}
 				continue
 			}
-			zoom := g.Maps[g.Config.Map].Cam.Z
-			screenCenterX := float64(g.Config.ScreenWidth) / 2
-			screenCenterY := float64(g.Config.ScreenHeight) / 2
 
-			// Reproduire la séquence de transformations du rendu normal
-			baseX := float64(Box[4])*unité + screenCenterX
-			baseY := float64(Box[5])*unité + float64(g.Config.ScreenHeight) // Calculer le facteur de parallaxe
-			parallaxFactor := float32(1.0)
-			if g.MapConfig.Parrallax && g.Maps[g.Config.Map].Cam.Z > 0 {
-				// Les layers plus "hauts" (height élevé) bougent moins
-				// Les layers plus "bas" (height faible) bougent plus
-				parallaxFactor = 1.0 - (float32(height)/g.Maps[g.Config.Map].Cam.Z)*g.MapConfig.ParrallaxFactor
-				if parallaxFactor < 0 {
-					parallaxFactor = 0
+			if g.Debug {
+				if spriteWidth == 0 {
+					drawCircle(screen, posX, posY, spriteHeight, ETEHelper.ImgMoyenne(*img))
+				} else {
+					drawRect(screen, posX, posY, spriteWidth, spriteHeight, ETEHelper.ImgMoyenne(*img))
 				}
-			}
-
-			// Appliquer offset caméra avec parallaxe
-			baseX -= float64(g.Maps[g.Config.Map].Cam.Offset[0]) * unité * float64(parallaxFactor)
-			baseY += float64(g.Maps[g.Config.Map].Cam.Offset[1]) * unité * float64(parallaxFactor)
-
-			// Zoom vers le centre
-			posX := -(baseX-screenCenterX)/float64(zoom) + screenCenterX
-			posY := -(baseY-screenCenterY)/float64(zoom) + screenCenterY
-
-			// xOffset/yOffset avec zoom
-			if Box[2] != 0 {
-				posX += float64(Box[2]) * unité / float64(zoom)
-			}
-			if Box[3] != 0 {
-				posY += float64(Box[3]) * unité / float64(zoom)
-			}
-			if g.Debug { // si le mode debug est activé
-
-				whith := float64(Box[0]) / float64(zoom)
-				height := float64(Box[1]) / float64(zoom)
-
-				if whith == 0 && height == 0 { // si la hitbox n'est pas définie
-					continue
-				} else if height == 0 { // si la hitbox est un cercle
-					//Draw circle
-					drawCircle(screen, float32(posX), float32(posY), float32(whith), ETEHelper.ImgMoyenne(*img))
-				} else { // si la hitbox est un rectangle
-					//Draw rectangle
-					drawRect(screen, float32(posX), float32(posY), float32(whith), float32(height), ETEHelper.ImgMoyenne(*img))
-				}
-
-				drawText(screen, float32(posX), float32(posY), ETEHelper.GetKey(g.Sprites, img))
+				drawText(screen, posX, posY, ETEHelper.GetKey(g.Sprites, img))
 			} else {
-
 				opts := &ebiten.DrawImageOptions{}
 
-				if Box[6] != 0 && Box[7] != 0 { // si la taille est définie
-					opts.GeoM.Scale(float64(-Box[6])/float64(img.Bounds().Dx()), -float64(Box[7])/float64(img.Bounds().Dy()))
-					// scale with element size : element.Size = taille en unité, * g.Maps[g.Conf.Map].Unité = mettre taille en pixels, / img.Bounds().Dx() = scale
-				} else {
-					opts.GeoM.Scale(-unité, -unité)
+				opts.GeoM.Translate(-float64(spriteWidth)/2, -float64(spriteHeight)/2)
+
+				imgWidth := float64(img.Bounds().Dx())
+				imgHeight := float64(img.Bounds().Dy())
+				if imgWidth > 0 && imgHeight > 0 {
+					opts.GeoM.Scale(float64(spriteWidth)/imgWidth, float64(spriteHeight)/imgHeight)
 				}
 
-				opts.GeoM.Rotate(float64(Box[8])) // rotate
+				// === ROTATION 180° POUR CORRIGER LES SPRITES À L'ENVERS ===
+				rotation := float64(Box[8]) + 3.14159 // + π radians (180°)
+				opts.GeoM.Rotate(rotation)
 
-				opts.GeoM.Scale(float64(g.Maps[g.Config.Map].Cam.Z), float64(g.Maps[g.Config.Map].Cam.Z))
+				opts.GeoM.Translate(float64(posX), float64(posY))
 
-				opts.GeoM.Translate(posX, posY)
-				screen.DrawImage(img, opts) // dessiner l'image
+				screen.DrawImage(img, opts)
 			}
 		}
 	}
@@ -118,4 +115,8 @@ func drawCircle(screen *ebiten.Image, x, y, radius float32, clr color.Color) { /
 }
 func drawText(screen *ebiten.Image, x, y float32, text string) {
 	ebitenutil.DebugPrintAt(screen, text, int(x), int(y))
+}
+
+func (g *Game) Quit() {
+
 }

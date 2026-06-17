@@ -14,8 +14,8 @@ type Game struct {
 	Tiles      map[string]*Tile
 	Animations map[string]*Animation
 
-	Debug      bool
-	UpdateFunc func(float32) error
+	Debug, Quite bool
+	UpdateFunc   func(float32) error
 }
 
 func (g *Game) GetGame() *Game {
