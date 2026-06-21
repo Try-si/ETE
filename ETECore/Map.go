@@ -103,53 +103,100 @@ func (g *Game) InitTile() {
 	}
 }
 
-func (m *Map) GetSpriteByOrderYZX() map[int]map[[9]float32]*ebiten.Image { // [witdh/radius, height, xOffset, yOffset, xPos, yPos, xSize, ySize, rotation]
-	resultat := make(map[int]map[[9]float32]*ebiten.Image)
+func (m *Map) GetSpriteByOrderYZX() []HeightLayer {
+	type SpriteData struct {
+		Height  int
+		Box     [9]float32
+		Img     *ebiten.Image
+		Visible bool
+	}
 
+	var result []SpriteData
+
+	// Ajouter les tiles
 	for k, v := range m.GetTileByLayer() {
-		if resultat[k] == nil {
-			resultat[k] = make(map[[9]float32]*ebiten.Image)
-		}
 		for pos, tile := range v {
-			resultat[k][[9]float32{
-				float32(pos[0]), float32(pos[1]),
-				float32(pos[2]), float32(pos[3]),
-				float32(pos[4]), float32(pos[5]),
-				float32(pos[6]), float32(pos[7]),
-				float32(pos[8]),
-			}] = tile
+			result = append(result, SpriteData{
+				Height: k,
+				Box: [9]float32{
+					float32(pos[0]), float32(pos[1]),
+					float32(pos[2]), float32(pos[3]),
+					float32(pos[4]), float32(pos[5]),
+					float32(pos[6]), float32(pos[7]),
+					float32(pos[8]),
+				},
+				Img:     tile,
+				Visible: true,
+			})
 		}
 	}
 
+	// Ajouter les éléments
 	for _, es := range m.GetElementByLayer() {
 		for _, e := range es {
-			if resultat[e.Z] == nil {
-				resultat[e.Z] = make(map[[9]float32]*ebiten.Image)
-			}
-			resultat[e.Z][[9]float32{
-				e.Box[0], e.Box[1],
-				e.Box[2], e.Box[3],
-				e.Pos[0], e.Pos[1],
-				float32(e.Size[0]), float32(e.Size[1]),
-				e.Rotation,
-			}] = e.GetSprite()
+			result = append(result, SpriteData{
+				Height: e.Z,
+				Box: [9]float32{
+					e.Box[0], e.Box[1],
+					e.Box[2], e.Box[3],
+					e.Pos[0], e.Pos[1],
+					float32(e.Size[0]), float32(e.Size[1]),
+					e.Rotation,
+				},
+				Img:     e.GetSprite(),
+				Visible: e.Visible,
+			})
 		}
 	}
 
-	// Sort keys
-	keys := make([]int, 0, len(resultat))
-	for k := range resultat {
-		keys = append(keys, k)
-	}
-	sort.Ints(keys)
+	// Trier par hauteur (du plus profond au plus proche)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Height > result[j].Height
+	})
 
-	// Create new map with sorted keys
-	sortedResult := make(map[int]map[[9]float32]*ebiten.Image)
-	for _, k := range keys {
-		sortedResult[k] = resultat[k]
+	// Regrouper par hauteur réelle, SANS utiliser Box comme clé
+	var resultat []HeightLayer
+	var currentHeight int
+	var currentLayer []SpriteEntry
+	first := true
+
+	for _, sprite := range result {
+		if first || sprite.Height != currentHeight {
+			if !first {
+				resultat = append(resultat, HeightLayer{
+					Height:  currentHeight,
+					Sprites: currentLayer,
+				})
+			}
+			currentHeight = sprite.Height
+			currentLayer = nil
+			first = false
+		}
+		currentLayer = append(currentLayer, SpriteEntry{
+			Box:     sprite.Box,
+			Img:     sprite.Img,
+			Visible: sprite.Visible,
+		})
+	}
+	if !first {
+		resultat = append(resultat, HeightLayer{
+			Height:  currentHeight,
+			Sprites: currentLayer,
+		})
 	}
 
-	return sortedResult
+	return resultat
+}
+
+type SpriteEntry struct {
+	Box     [9]float32
+	Img     *ebiten.Image
+	Visible bool
+}
+
+type HeightLayer struct {
+	Height  int
+	Sprites []SpriteEntry
 }
 
 func (m *Map) GetElementByLayer() map[int][]Element {

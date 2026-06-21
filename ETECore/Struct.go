@@ -23,11 +23,12 @@ func (g *Game) GetGame() *Game {
 }
 
 type Config struct {
-	ScreenWidth  int    `json:"ScreenWidth"`  // largeur de l'écran
-	ScreenHeight int    `json:"ScreenHeight"` // hauteur de l'écran
-	Resizeable   bool   `json:"Resizeable"`   // si la fenêtre peut être redimensionnée
-	Title        string `json:"Title"`        // titre de la fenêtre
-	Map          string `json:"Map"`          // map actuelle/de base
+	ScreenWidth    int    `json:"ScreenWidth"`    // largeur de l'écran
+	ScreenHeight   int    `json:"ScreenHeight"`   // hauteur de l'écran
+	Resizeable     bool   `json:"Resizeable"`     // si la fenêtre peut être redimensionnée
+	Title          string `json:"Title"`          // titre de la fenêtre
+	Map            string `json:"Map"`            // map actuelle/de base
+	AdaptativeSize bool   `json:"AdaptativeSize"` // si la fenêtre doit s'adapter à la taille de l'écran
 
 	SpritePath     string `json:"SpritePath"`     // chemin vers les sprites
 	MapsPath       string `json:"MapsPath"`       // chemin vers les maps
@@ -84,6 +85,7 @@ type Element struct {
 	Z, Frame, FFrame int               `json:"Height"`
 	MetaData         map[string]string `json:"MetaData"`
 	G                IForGame
+	Visible          bool `json:"Visible"`
 }
 
 type JsonMap struct {

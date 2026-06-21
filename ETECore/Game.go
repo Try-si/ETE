@@ -22,78 +22,90 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	Map := g.Maps[g.Config.Map]
 	unit := float32(Map.Unité)
 
-	for height, L := range Map.GetSpriteByOrderYZX() {
+	for _, layer := range Map.GetSpriteByOrderYZX() {
+		height := layer.Height
+
 		if float32(height) < Map.Cam.Z {
 			continue
 		}
 
-		for Box, img := range L {
-			zoom := Map.Cam.Z
+		dist := Map.Cam.Z - float32(height)
 
-			// === CALCUL DE LA TAILLE ===
-			spriteWidth := float32(Box[0]) * unit * zoom
-			spriteHeight := float32(Box[1]) * unit * zoom
+		if dist == 0 {
+			dist = 0.0001
+		}
+		if dist < 0 {
+			dist = -dist
+		}
 
-			// === CALCUL DE LA POSITION ===
-			worldX := Box[4] * unit * zoom
-			worldY := Box[5] * unit * zoom
+		for _, entry := range layer.Sprites {
+			if entry.Visible {
+				Box := entry.Box
+				img := entry.Img
 
-			centerX := float32(g.Config.ScreenWidth) / 2
-			centerY := float32(g.Config.ScreenHeight) / 2
+				// === CALCUL DE LA TAILLE (plus loin = plus petit) ===
+				spriteWidth := float32(Box[0]) * unit / dist
+				spriteHeight := float32(Box[1]) * unit / dist
 
-			camOffsetX := Map.Cam.Offset[0] * unit * zoom
-			camOffsetY := Map.Cam.Offset[1] * unit * zoom
+				// === CALCUL DE LA POSITION MONDE ===
+				worldX := Box[4] * unit
+				worldY := Box[5] * unit
 
-			elemOffsetX := Box[2] * unit * zoom
-			elemOffsetY := Box[3] * unit * zoom
+				centerX := float32(g.Config.ScreenWidth) / 2
+				centerY := float32(g.Config.ScreenHeight) / 2
 
-			// === INVERSION DES AXES X ET Y ===
-			// Votre système : X+ = gauche, Y+ = haut
-			// Ebiten : X+ = droite, Y+ = bas
-			posX := centerX - (worldX - camOffsetX + elemOffsetX) // X INVERSIÉ
-			posY := centerY - (worldY - camOffsetY + elemOffsetY) // Y INVERSIÉ
+				camOffsetX := Map.Cam.Offset[0] * unit
+				camOffsetY := Map.Cam.Offset[1] * unit
 
-			posX -= unit
-			posY -= unit
+				elemOffsetX := Box[2] * unit
+				elemOffsetY := Box[3] * unit
 
-			if img == nil {
+				// === POSITION FINALE AVEC PARALLAX ET INVERSION DES AXES ===
+				posX := centerX - (worldX+camOffsetX+elemOffsetX+centerX)/dist + centerX/dist
+				posY := centerY - (worldY+camOffsetY+elemOffsetY+centerY)/dist + centerY/dist
+
+				if img == nil {
+					if g.Debug {
+						drawRect(screen, posX, posY, spriteWidth, spriteHeight, color.RGBA{255, 0, 0, 255})
+					}
+					continue
+				}
+
 				if g.Debug {
-					drawRect(screen, posX, posY, spriteWidth, spriteHeight, color.RGBA{255, 0, 0, 255})
-				}
-				continue
-			}
-
-			if g.Debug {
-				if spriteWidth == 0 {
-					drawCircle(screen, posX, posY, spriteHeight, ETEHelper.ImgMoyenne(*img))
+					if spriteWidth == 0 {
+						drawCircle(screen, posX, posY, spriteHeight, ETEHelper.ImgMoyenne(*img))
+					} else {
+						drawRect(screen, posX, posY, spriteWidth, spriteHeight, ETEHelper.ImgMoyenne(*img))
+					}
+					drawText(screen, posX, posY, ETEHelper.GetKey(g.Sprites, img))
 				} else {
-					drawRect(screen, posX, posY, spriteWidth, spriteHeight, ETEHelper.ImgMoyenne(*img))
+					opts := &ebiten.DrawImageOptions{}
+
+					opts.GeoM.Translate(-float64(spriteWidth)/2, -float64(spriteHeight)/2)
+
+					imgWidth := float64(img.Bounds().Dx())
+					imgHeight := float64(img.Bounds().Dy())
+					if imgWidth > 0 && imgHeight > 0 {
+						opts.GeoM.Scale(float64(spriteWidth)/imgWidth, float64(spriteHeight)/imgHeight)
+					}
+
+					// === ROTATION 180° POUR CORRIGER LES SPRITES À L'ENVERS ===
+					rotation := float64(Box[8]) + 3.14159 // + π radians (180°)
+					opts.GeoM.Rotate(rotation)
+
+					opts.GeoM.Translate(float64(posX), float64(posY))
+
+					screen.DrawImage(img, opts)
 				}
-				drawText(screen, posX, posY, ETEHelper.GetKey(g.Sprites, img))
-			} else {
-				opts := &ebiten.DrawImageOptions{}
-
-				opts.GeoM.Translate(-float64(spriteWidth)/2, -float64(spriteHeight)/2)
-
-				imgWidth := float64(img.Bounds().Dx())
-				imgHeight := float64(img.Bounds().Dy())
-				if imgWidth > 0 && imgHeight > 0 {
-					opts.GeoM.Scale(float64(spriteWidth)/imgWidth, float64(spriteHeight)/imgHeight)
-				}
-
-				// === ROTATION 180° POUR CORRIGER LES SPRITES À L'ENVERS ===
-				rotation := float64(Box[8]) + 3.14159 // + π radians (180°)
-				opts.GeoM.Rotate(rotation)
-
-				opts.GeoM.Translate(float64(posX), float64(posY))
-
-				screen.DrawImage(img, opts)
 			}
 		}
 	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	if g.Config.AdaptativeSize {
+		return outsideWidth, outsideHeight
+	}
 	return int(g.Config.ScreenWidth), int(g.Config.ScreenHeight)
 }
 

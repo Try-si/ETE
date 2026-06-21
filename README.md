@@ -71,6 +71,7 @@ config.json :
     "ScreenHeight": 600,         // hauteur de l'écran
     "Title": "Test",             // titre de la fenêtre
     "Map": "Overworld",          // map actuelle/de base
+    "AdaptativeSize": false,     // si les element doive retrécire quand la taille de la fenêtre est augmenté
 
     "SpritePath": "Textures",    // chemin vers les sprites
     "MapsPath": "Maps/Maps.json", // chemin vers les maps
@@ -146,7 +147,8 @@ Exemple map json (overworld.json) :
             "Name": "Player",  // nom de l'élément dans Elements.json
             "Pos": [0.0, 0.0], // position de l'élément
             "Rotation": 0,     // rotation de l'élément
-            "Height": 1,        // hauteur de l'élément
+            "Z": 1,        // hauteur de l'élément
+            "Visible": true,   // visible ou non
             "MetaData": {
                 "Nom de la variable": "valeur de la variable" // toujours une string
             }
