@@ -6,12 +6,14 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Try-si/ETE/ETEHelper"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 var dir string
+var fid int
 
 func (g *Game) InitMap() {
 	g.Maps = make(map[string]*Map)
@@ -41,7 +43,8 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 		// Construire le chemin correct pour le TSX
 		// Le fichier TMX est dans Maps/Maps/, le source est ../Tileset/Sol.tsx
 		// Donc le chemin absolu est Maps/Tileset/Sol.tsx
-		tsxAbsPath := dir + "/Tileset/" + tsRef.Source[len("../Tileset/"):]
+		tsxAbsPath := dir + tsRef.Source
+		tsxAbsPath = strings.ReplaceAll(tsxAbsPath, "..", "")
 		tsxData, err := ETEHelper.LoadTSX(tsxAbsPath)
 		if err != nil {
 			panic(fmt.Sprintf("Erreur tileset %s: %v", tsRef.Source, err))
@@ -50,7 +53,11 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 		// Construire le chemin correct pour l'image
 		// L'image est ../../Textures/tileset_1.png relatif au TSX
 		// Donc le chemin absolu est Textures/tileset_1.png
-		imgPath := dir + "/../Textures/" + tsxData.Image.Source[len("../../Textures/"):]
+		imgPath := tsxData.Image.Source
+		imgPath = strings.ReplaceAll(imgPath, "..", "")
+		for strings.Contains(imgPath, "//") {
+			imgPath = strings.ReplaceAll(imgPath, "//", "")
+		}
 		fullImg := ETEHelper.LoadImage(imgPath)
 
 		for _, tile := range ETEHelper.SliceImageByGrid(fullImg, (tsxData.TileWidth+tsxData.TileHeight)/2) {
@@ -60,22 +67,26 @@ func (mc *MapConfig) LoadMap(mapName string) *Map {
 
 	// 4. Charger les sprites
 	for i, img := range tilesetsImages {
-		mc.G.GetGame().Sprites[strconv.Itoa(i)] = img
+		mc.G.GetGame().Sprites[strconv.Itoa(fid+i)] = img
 	}
+	fid += len(tilesetsImages)
 
 	// 5. Créer la map
 	internalTiles := ETEHelper.ConvertTMXToInternal(tiledMap, jsonMaps.PropertiesForHeight)
-	fmt.Printf("ConvertTMXToInternal returned %d tiles\n", len(internalTiles))
-	if len(internalTiles) > 0 {
-		fmt.Printf("First tile: Height=%d, X=%d, Y=%d, GID=%d\n",
-			internalTiles[0].Height, internalTiles[0].X, internalTiles[0].Y, internalTiles[0].GID)
-	}
 
 	// Initialiser les éléments avec G
 	elements := make(map[string]*Element)
 	for k, v := range jsonMaps.Elements {
+		//fmt.Println("Pré Element "+k+"Z:", jsonMaps.Elements[k].Z)
+		//fmt.Println("Element "+k+" Z:", v.Z)
 		v.G = mc.G
+		v.Rand = time.Now().Hour() + time.Now().Minute() + time.Now().Second() + time.Now().Nanosecond()
+		v.Pos[1] = -v.Pos[1]
 		elements[k] = v
+	}
+
+	if jsonMaps.Cam.DebZ == 0 {
+		jsonMaps.Cam.DebZ = jsonMaps.Cam.Z
 	}
 
 	resultat := Map{
@@ -103,12 +114,16 @@ func (g *Game) InitTile() {
 	}
 }
 
+var resulta map[int]bool
+
 func (m *Map) GetSpriteByOrderYZX() []HeightLayer {
 	type SpriteData struct {
-		Height  int
+		Height  float32
 		Box     [9]float32
 		Img     *ebiten.Image
 		Visible bool
+		Paralax bool
+		Rand    int
 	}
 
 	var result []SpriteData
@@ -127,6 +142,7 @@ func (m *Map) GetSpriteByOrderYZX() []HeightLayer {
 				},
 				Img:     tile,
 				Visible: true,
+				Rand:    pos[9],
 			})
 		}
 	}
@@ -145,20 +161,32 @@ func (m *Map) GetSpriteByOrderYZX() []HeightLayer {
 				},
 				Img:     e.GetSprite(),
 				Visible: e.Visible,
+				Rand:    e.Rand,
+				Paralax: e.Parallax,
 			})
 		}
 	}
 
 	// Trier par hauteur (du plus profond au plus proche)
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].Height > result[j].Height
+		//fmt.Println("Height i: ", result[i].Height, " Height j: ", result[j].Height)
+		if result[i].Height != result[j].Height {
+			return result[i].Height > result[j].Height // profond -> proche, inchangé
+		}
+		if result[i].Box[5] != result[j].Box[5] {
+			return result[i].Box[5] > result[j].Box[5] // Y croissant (Box[4]=X, Box[5]=Y pour tiles et éléments)
+		}
+		if result[i].Box[4] != result[j].Box[4] {
+			return result[i].Box[4] > result[j].Box[4] // X croissant en tie-break
+		}
+		return result[i].Rand > result[j].Rand
 	})
 
 	// Regrouper par hauteur réelle, SANS utiliser Box comme clé
 	var resultat []HeightLayer
-	var currentHeight int
 	var currentLayer []SpriteEntry
 	first := true
+	var currentHeight float32
 
 	for _, sprite := range result {
 		if first || sprite.Height != currentHeight {
@@ -169,13 +197,15 @@ func (m *Map) GetSpriteByOrderYZX() []HeightLayer {
 				})
 			}
 			currentHeight = sprite.Height
-			currentLayer = nil
+			currentLayer = make([]SpriteEntry, 0) // Réinitialiser à chaque changement de hauteur
 			first = false
+			//fmt.Println("Height: ", currentHeight)
 		}
 		currentLayer = append(currentLayer, SpriteEntry{
 			Box:     sprite.Box,
 			Img:     sprite.Img,
 			Visible: sprite.Visible,
+			Paralax: sprite.Paralax,
 		})
 	}
 	if !first {
@@ -185,6 +215,10 @@ func (m *Map) GetSpriteByOrderYZX() []HeightLayer {
 		})
 	}
 
+	sort.Slice(resultat, func(i, j int) bool {
+		return resultat[i].Height > resultat[j].Height
+	})
+
 	return resultat
 }
 
@@ -192,16 +226,18 @@ type SpriteEntry struct {
 	Box     [9]float32
 	Img     *ebiten.Image
 	Visible bool
+	Paralax bool
 }
 
 type HeightLayer struct {
-	Height  int
+	Height  float32
 	Sprites []SpriteEntry
 }
 
-func (m *Map) GetElementByLayer() map[int][]Element {
-	lay := make(map[int][]Element)
+func (m *Map) GetElementByLayer() map[float32][]Element {
+	lay := make(map[float32][]Element)
 	for _, v := range m.Elements {
+		//fmt.Println("Element "+n+" Z: ", v.Z)
 		(v).Animation = v.G.GetGame().Elements[v.Name].Animation
 		(v).Size = v.G.GetGame().Elements[v.Name].Size
 		(v).Box = v.G.GetGame().Elements[v.Name].Box
@@ -212,11 +248,12 @@ func (m *Map) GetElementByLayer() map[int][]Element {
 	return lay
 }
 
-func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
-	lay := make(map[int]map[[9]int]*ebiten.Image)
+func (m *Map) GetTileByLayer() map[float32]map[[10]int]*ebiten.Image {
+	lay := make(map[float32]map[[10]int]*ebiten.Image)
 	for la, tiles := range m.Map.Tiles {
-		lay[la] = make(map[[9]int]*ebiten.Image)
+		lay[la] = make(map[[10]int]*ebiten.Image)
 		for pos, tile := range tiles {
+			//fmt.Println("Tile "+strconv.Itoa(int(tile.Id))+" layer Z : ", la)
 			tile.PushFrame()
 			img, isAnimated := tile.GetSprite()
 			if img == nil {
@@ -226,7 +263,7 @@ func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
 			if isAnimated {
 				b := tile.Game.GetGame().Animations[tile.Game.GetGame().Tiles[strconv.Itoa(tile.Id)].Animation].Frames[tile.Frame-1].Box
 				cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].CellSize
-				lay[la][[9]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0}] = img
+				lay[la][[10]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0, tile.Rand}] = img
 			} else {
 				var b [4]int
 				if _, exist := tile.Game.GetGame().Tiles[strconv.Itoa(int(tile.Id))]; !exist {
@@ -236,7 +273,7 @@ func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
 					b = tile.Game.GetGame().Tiles[strconv.Itoa(int(tile.Id))].Box
 				}
 				cs := tile.Game.GetGame().Maps[tile.Game.GetGame().Config.Map].Unité
-				lay[la][[9]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0}] = img
+				lay[la][[10]int{b[0], b[1], b[2], b[3], pos[0], pos[1], cs, cs, 0, tile.Rand}] = img
 			}
 		}
 	}
@@ -244,9 +281,9 @@ func (m *Map) GetTileByLayer() map[int]map[[9]int]*ebiten.Image {
 	return lay
 }
 
-func internalTilesToTiles(internalTiles []ETEHelper.TileInstance, G IForGame) map[int]map[[2]int]*TileElement {
+func internalTilesToTiles(internalTiles []ETEHelper.TileInstance, G IForGame) map[float32]map[[2]int]*TileElement {
 	fmt.Printf("internalTilesToTiles called with %d tiles\n", len(internalTiles))
-	result := make(map[int]map[[2]int]*TileElement)
+	result := make(map[float32]map[[2]int]*TileElement)
 	for _, t := range internalTiles {
 		height := t.Height
 		gid := int(t.GID)
@@ -260,6 +297,7 @@ func internalTilesToTiles(internalTiles []ETEHelper.TileInstance, G IForGame) ma
 		result[height][[2]int{t.X, t.Y}] = &TileElement{
 			Id:   int(t.GID),
 			Game: G,
+			Rand: time.Now().Hour() + time.Now().Minute() + time.Now().Second() + time.Now().Nanosecond(),
 		}
 		result[height][[2]int{t.X, t.Y}].PushFrame()
 	}

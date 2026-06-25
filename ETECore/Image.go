@@ -15,22 +15,26 @@ type IForGame interface {
 
 func (g *Game) InitSprites() {
 	g.Sprites = make(map[string]*ebiten.Image)
-	for _, fileName := range ETEHelper.GetAllFilesInDir(g.Config.SpritePath) {
-		g.Sprites[fileName] = ebiten.NewImageFromImage(ETEHelper.LoadImage(g.Config.SpritePath + "/" + fileName))
-		println("Loaded sprite: " + fileName)
+	for _, p := range g.Config.SpritePath {
+		for _, fileName := range ETEHelper.GetAllFilesInDir(p) {
+			g.Sprites[fileName] = ebiten.NewImageFromImage(ETEHelper.LoadImage(p + "/" + fileName))
+			println("Loaded sprite: " + fileName)
+		}
 	}
 }
 
 func (g *Game) InitAnimations() {
-	Animations := ETEHelper.JsonToStruct[[]string](g.Config.AnimationsPath)
+	for _, p := range g.Config.AnimationsPath {
+		Animations := ETEHelper.JsonToStruct[[]string](p)
 
-	animDir := strings.Join(strings.Split(g.Config.AnimationsPath, "/")[:len(strings.Split(g.Config.AnimationsPath, "/"))-1], "/")
+		animDir := strings.Join(strings.Split(p, "/")[:len(strings.Split(p, "/"))-1], "/")
 
-	g.Animations = make(map[string]*Animation)
-	for _, animationName := range Animations {
-		anim := ETEHelper.JsonToStruct[map[string]*Animation](animDir + "/" + animationName + ".json")
-		for k, v := range anim {
-			g.Animations[k] = v
+		g.Animations = make(map[string]*Animation)
+		for _, animationName := range Animations {
+			anim := ETEHelper.JsonToStruct[map[string]*Animation](animDir + "/" + animationName + ".json")
+			for k, v := range anim {
+				g.Animations[k] = v
+			}
 		}
 	}
 }

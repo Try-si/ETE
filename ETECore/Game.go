@@ -3,6 +3,7 @@ package ETECore
 import (
 	"errors"
 	"image/color"
+	"time"
 
 	"github.com/Try-si/ETE/ETEHelper"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -11,6 +12,12 @@ import (
 )
 
 func (g *Game) Update() error {
+	now := time.Now()
+	if !g.LastTime.IsZero() {
+		g.DeltaTime = float32(now.Sub(g.LastTime).Seconds())
+	}
+	g.LastTime = now
+
 	if g.Quite {
 		return errors.New("quit")
 	}
@@ -22,14 +29,27 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	Map := g.Maps[g.Config.Map]
 	unit := float32(Map.Unité)
 
+	parallaxFactor := g.MapConfig.ParrallaxFactor
+
 	for _, layer := range Map.GetSpriteByOrderYZX() {
 		height := layer.Height
 
-		if float32(height) < Map.Cam.Z {
+		if height < Map.Cam.Z {
 			continue
 		}
 
-		dist := Map.Cam.Z - float32(height)
+		if Map.Cam.DebZ == 0 {
+			Map.Cam.DebZ = Map.Cam.Z
+		}
+		if Map.Cam.Zoom == 0 {
+			Map.Cam.Zoom = 1
+		}
+
+		dist := (height - Map.Cam.Z) / Map.Cam.Zoom
+
+		if !g.MapConfig.Parrallax {
+			dist = Map.Cam.Z / Map.Cam.Zoom
+		}
 
 		if dist == 0 {
 			dist = 0.0001
@@ -44,29 +64,38 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				img := entry.Img
 
 				// === CALCUL DE LA TAILLE (plus loin = plus petit) ===
-				spriteWidth := float32(Box[0]) * unit / dist
-				spriteHeight := float32(Box[1]) * unit / dist
+				spriteWidth := float32(-Box[0]) * unit / dist
+				spriteHeight := float32(-Box[1]) * unit / dist
 
 				// === CALCUL DE LA POSITION MONDE ===
-				worldX := Box[4] * unit
-				worldY := Box[5] * unit
+				worldX := -Box[4] * unit
+				worldY := -Box[5] * unit
 
 				centerX := float32(g.Config.ScreenWidth) / 2
 				centerY := float32(g.Config.ScreenHeight) / 2
 
-				camOffsetX := Map.Cam.Offset[0] * unit
+				camOffsetX := -Map.Cam.Offset[0] * unit
 				camOffsetY := Map.Cam.Offset[1] * unit
 
 				elemOffsetX := Box[2] * unit
 				elemOffsetY := Box[3] * unit
 
-				// === POSITION FINALE AVEC PARALLAX ET INVERSION DES AXES ===
-				posX := centerX - (worldX+camOffsetX+elemOffsetX+centerX)/dist + centerX/dist
-				posY := centerY - (worldY+camOffsetY+elemOffsetY+centerY)/dist + centerY/dist
+				if g.MapConfig.Parrallax || entry.Paralax {
+					elemOffsetX = elemOffsetX * parallaxFactor
+					elemOffsetY = elemOffsetY * parallaxFactor
+				}
+
+				OffsetX := camOffsetX + elemOffsetX
+				OffsetY := camOffsetY + elemOffsetY
+
+				// === POSITION FINALE AVEC INVERSION DES AXES ===
+				var posX, posY float32
+				posX = centerX - (worldX+OffsetX+centerX)/dist + centerX/dist
+				posY = centerY - (worldY+OffsetY+centerY)/dist + centerY/dist
 
 				if img == nil {
 					if g.Debug {
-						drawRect(screen, posX, posY, spriteWidth, spriteHeight, color.RGBA{255, 0, 0, 255})
+						drawRect(screen, posX, posY, spriteWidth, spriteHeight, color.RGBA{255, 6, 181, 255})
 					}
 					continue
 				}
@@ -81,22 +110,25 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				} else {
 					opts := &ebiten.DrawImageOptions{}
 
-					opts.GeoM.Translate(-float64(spriteWidth)/2, -float64(spriteHeight)/2)
-
 					imgWidth := float64(img.Bounds().Dx())
 					imgHeight := float64(img.Bounds().Dy())
+
+					opts.GeoM.Translate(-imgWidth/2, -imgHeight/2)
+
 					if imgWidth > 0 && imgHeight > 0 {
 						opts.GeoM.Scale(float64(spriteWidth)/imgWidth, float64(spriteHeight)/imgHeight)
 					}
 
-					// === ROTATION 180° POUR CORRIGER LES SPRITES À L'ENVERS ===
-					rotation := float64(Box[8]) + 3.14159 // + π radians (180°)
+					rotation := float64(Box[8]) + 3.14159
 					opts.GeoM.Rotate(rotation)
 
 					opts.GeoM.Translate(float64(posX), float64(posY))
 
 					screen.DrawImage(img, opts)
 				}
+				//vector.StrokeRect(screen, posX, posY, spriteWidth, spriteHeight, 1, color.Black, false)
+				//screen.Set(int(posX), int(posY), color.White)
+				//ebitenutil.DebugPrintAt(screen, strconv.FormatFloat(float64(height), 'f', -1, 64), int(posX), int(posY))
 			}
 		}
 	}

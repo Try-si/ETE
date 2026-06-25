@@ -3,7 +3,6 @@ package ETEHelper
 import (
 	"encoding/xml"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -75,7 +74,7 @@ type TSXImage struct {
 }
 
 type TileInstance struct {
-	Height int
+	Height float32
 	X      int
 	Y      int
 	GID    uint32
@@ -105,9 +104,20 @@ func ConvertTMXToInternal(tmx *TMXMap, propertiesForHeight string) []TileInstanc
 	var tiles []TileInstance
 
 	for _, layer := range tmx.Layers {
-		h, _ := strconv.ParseFloat(layer.Properties.Property[sort.Search(len(layer.Properties.Property), func(i int) bool {
-			return layer.Properties.Property[i].Name == propertiesForHeight
-		})].Value, 32)
+		// Trouver la propriété height
+		var heightValue string
+		for _, prop := range layer.Properties.Property {
+			if prop.Name == propertiesForHeight {
+				heightValue = prop.Value
+				break
+			}
+		}
+		h, err := strconv.ParseFloat(heightValue, 32)
+
+		if err != nil {
+			panic(err)
+		}
+
 		for _, chunk := range layer.Data.Chunks {
 			lines := strings.Split(strings.TrimSpace(chunk.Data), "\n")
 			for y, line := range lines {
@@ -132,7 +142,7 @@ func ConvertTMXToInternal(tmx *TMXMap, propertiesForHeight string) []TileInstanc
 					absX := chunk.X + x
 					absY := chunk.Y + y
 					tiles = append(tiles, TileInstance{
-						Height: int(h),
+						Height: float32(h),
 						X:      absX,
 						Y:      absY,
 						GID:    uint32(gid),

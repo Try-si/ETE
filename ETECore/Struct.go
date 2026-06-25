@@ -1,6 +1,10 @@
 package ETECore
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"time"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 // All
 
@@ -16,6 +20,8 @@ type Game struct {
 
 	Debug, Quite bool
 	UpdateFunc   func(float32) error
+	DeltaTime    float32
+	LastTime     time.Time
 }
 
 func (g *Game) GetGame() *Game {
@@ -30,9 +36,9 @@ type Config struct {
 	Map            string `json:"Map"`            // map actuelle/de base
 	AdaptativeSize bool   `json:"AdaptativeSize"` // si la fenêtre doit s'adapter à la taille de l'écran
 
-	SpritePath     string `json:"SpritePath"`     // chemin vers les sprites
-	MapsPath       string `json:"MapsPath"`       // chemin vers les maps
-	AnimationsPath string `json:"AnimationsPath"` // chemin vers les animations
+	SpritePath     []string `json:"SpritePath"`     // chemin vers les sprites
+	MapsPath       string   `json:"MapsPath"`       // chemin vers les maps
+	AnimationsPath []string `json:"AnimationsPath"` // chemin vers les animations
 }
 
 // Map
@@ -57,7 +63,7 @@ type Map struct {
 }
 
 type MapData struct {
-	Tiles map[int]map[[2]int]*TileElement
+	Tiles map[float32]map[[2]int]*TileElement
 }
 
 type TileElement struct {
@@ -65,12 +71,14 @@ type TileElement struct {
 	Frame  int
 	FFrame int
 	Game   IForGame
+	Rand   int
 }
 
 type Tile struct {
 	Animation string   `json:"Animation"`
 	Box       [4]int   `json:"Box"`
 	Tags      []string `json:"Tags"`
+	Parallax  bool     `json:"Parallax"`
 }
 
 type Element struct {
@@ -79,13 +87,17 @@ type Element struct {
 	Box       [4]float32 `json:"Box"`
 	Tags      []string   `json:"Tags"`
 
-	Name             string            `json:"Name"`
-	Pos              [2]float32        `json:"Pos"`
-	Rotation         float32           `json:"Rotation"`
-	Z, Frame, FFrame int               `json:"Height"`
-	MetaData         map[string]string `json:"MetaData"`
-	G                IForGame
-	Visible          bool `json:"Visible"`
+	Name          string     `json:"Name"`
+	Pos           [2]float32 `json:"Pos"`
+	Rotation      float32    `json:"Rotation"`
+	Z             float32    `json:"Z"`
+	Frame, FFrame int
+	MetaData      map[string]string `json:"MetaData"`
+	G             IForGame
+	Visible       bool `json:"Visible"`
+
+	Rand     int
+	Parallax bool `json:"Parallax"`
 }
 
 type JsonMap struct {
@@ -98,7 +110,9 @@ type JsonMap struct {
 }
 
 type Camera struct {
-	Z      float32    `json:"Z"`
+	Z      float32 `json:"Z"`
+	DebZ   float32
+	Zoom   float32    `json:"Zoom"`
 	Offset [2]float32 `json:"Offset"`
 }
 
